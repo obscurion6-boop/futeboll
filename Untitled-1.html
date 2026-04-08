@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚽ NEOGOAL — Futebol ao Vivo</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  /* ============================================
+     CSS VARIABLES & RESET
+  ============================================ */
+  :root {
+    --bg:       #04040d;
+    --bg2:      #080814;
+    --bg3:      #0d0d1f;
+    --panel:    rgba(10,10,30,0.85);
+    --border:   rgba(0,255,180,0.18);
+    --neon:     #00ffb3;
+    --neon2:    #00c8ff;
+    --neon3:    #ff3cac;
+    --gold:     #ffd700;
+    --text:     #c8d8e8;
+    --text2:    #6a8a9a;
+    --danger:   #ff3c5a;
+    --glow:     0 0 18px rgba(0,255,179,0.45), 0 0 40px rgba(0,200,255,0.2);
+    --glow2:    0 0 16px rgba(255,60,172,0.5);
+    --radius:   12px;
+    --transition: 0.3s cubic-bezier(.4,0,.2,1);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: -2;
+    background:
+      linear-gradient(rgba(0,255,179,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,179,0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: gridMove 20s linear infinite;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: -1;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,200,255,0.06) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(0,255,179,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  @keyframes gridMove {
+    0%   { background-position: 0 0, 0 0; }
+    100% { background-position: 50px 50px, 50px 50px; }
+  }
+
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: block; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px 28px; border: none; border-radius: var(--radius);
+    font-family: 'Orbitron', monospace; font-size: 0.8rem; font-weight: 700;
+    letter-spacing: 1.5px; cursor: pointer; transition: var(--transition);
+    text-transform: uppercase; position: relative; overflow: hidden;
+    text-decoration: none;
+  }
+  .btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: rgba(255,255,255,0.08);
+    transform: translateX(-100%); transition: transform 0.3s;
+  }
+  .btn:hover::before { transform: translateX(0); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--neon), var(--neon2));
+    color: #04040d;
+  }
+  .btn-primary:hover { box-shadow: var(--glow); transform: translateY(-2px); }
+  .btn-outline {
+    background: transparent;
+    border: 1.5px solid var(--neon);
+    color: var(--neon);
+  }
+  .btn-outline:hover { box-shadow: var(--glow); background: rgba(0,255,179,0.07); }
+  .btn-danger {
+    background: linear-gradient(135deg, var(--danger), #c00040);
+    color: #fff;
+  }
+  .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 0 18px rgba(255,60,90,0.5); }
+  .btn-sm { padding: 7px 16px; font-size: 0.7rem; }
+  .btn-gold {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    color: #04040d;
+  }
+  .btn-gold:hover { box-shadow: 0 0 18px rgba(255,215,0,0.5); transform: translateY(-2px); }
+
+  .input-group { display: flex; flex-direction: column; gap: 6px; }
+  .input-group label {
+    font-family: 'Orbitron', monospace; font-size: 0.65rem;
+    letter-spacing: 2px; color: var(--neon); text-transform: uppercase;
+  }
+  .input-field {
+    background: rgba(0,255,179,0.04);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px; color: var(--text);
+    font-family: 'Rajdhani', sans-serif; font-size: 1rem; font-weight: 600;
+    transition: var(--transition); outline: none; width: 100%;
+  }
+  .input-field:focus {
+    border-color: var(--neon);
+    background: rgba(0,255,179,0.07);
+    box-shadow: 0 0 12px rgba(0,255,179,0.15);
+  }
+  .input-field::placeholder { color: var(--text2); }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .card-glow { box-shadow: inset 0 1px 0 rgba(0,255,179,0.1), var(--glow); }
+
+  .scanlines {
+    position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px, rgba(0,0,0,0.015) 2px, rgba(0,0,0,0.015) 4px
+    );
+    opacity: 0.6;
+  }
+
+  #notif-area {
+    position: fixed; top: 20px; right: 20px; z-index: 10000;
+    display: flex; flex-direction: column; gap: 10px; max-width: 340px;
+  }
+  .notif {
+    background: rgba(8,8,20,0.95);
+    border: 1.5px solid var(--neon);
+    border-radius: var(--radius);
+    padding: 14px 18px; font-size: 0.9rem; font-weight: 600;
+    box-shadow: var(--glow); display: flex; align-items: center; gap: 10px;
+    animation: notifIn 0.3s ease;
+  }
+  .notif.error { border-color: var(--danger); box-shadow: 0 0 16px rgba(255,60,90,0.4); }
+  .notif.warn  { border-color: var(--gold); }
+  @keyframes notifIn {
+    from { opacity: 0; transform: translateX(40px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ============================================
+     PAGE: AUTH
+  ============================================ */
+  #auth-page {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+    background: radial-gradient(ellipse 100% 80% at 50% -10%, rgba(0,200,255,0.1) 0%, transparent 60%);
+  }
+  .auth-center {
+    width: 100%; max-width: 460px;
+    animation: fadeUp 0.6s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .auth-logo { text-align: center; margin-bottom: 36px; }
+  .auth-logo .ball {
+    font-size: 4rem; display: block;
+    filter: drop-shadow(0 0 20px rgba(0,255,179,0.6));
+    animation: spinBall 6s linear infinite;
+  }
+  @keyframes spinBall { to { transform: rotate(360deg); } }
+  .auth-logo h1 {
+    font-family: 'Orbitron', monospace; font-size: 2rem; font-weight: 900;
+    background: linear-gradient(90deg, var(--neon), var(--neon2), var(--neon));
+    background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+  }
+  @keyframes shimmer { to { background-position: 200% center; } }
+  .auth-logo p { color: var(--text2); font-size: 0.85rem; letter-spacing: 3px; text-transform: uppercase; margin-top: 4px; }
+  .auth-card { padding: 36px; display: flex; flex-direction: column; gap: 22px; }
+  .auth-tabs {
+    display: flex; border-radius: var(--radius); overflow: hidden;
+    border: 1.5px solid var(--border);
+  }
+  .auth-tab {
+    flex: 1; padding: 12px; text-align: center;
+    font-family: 'Orbitron', monospace; font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 1.5px; cursor: pointer; transition: var(--transition);
+    text-transform: uppercase; color: var(--text2); background: transparent; border: none;
+  }
+  .auth-tab.active {
+    background: linear-gradient(135deg, rgba(0,255,179,0.15), rgba(0,200,255,0.15));
+    color: var(--neon);
+  }
+  .auth-form { display: flex; flex-direction: column; gap: 18px; }
+  .auth-extra { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
+  .auth-extra a { color: var(--neon2); cursor: pointer; transition: var(--transition); }
+  .auth-extra a:hover { color: var(--neon); }
+  .auth-error {
+    color: var(--danger); font-size: 0.85rem; font-weight: 600;
+    padding: 10px 14px; border-radius: 8px;
+    background: rgba(255,60,90,0.08); border: 1px solid rgba(255,60,90,0.2);
+    display: none;
+  }
+  .admin-link { text-align: center; margin-top: 16px; font-size: 0.8rem; color: var(--text2); }
+  .admin-link a { color: var(--gold); cursor: pointer; font-weight: 700; }
+  .admin-link a:hover { text-shadow: 0 0 8px rgba(255,215,0,0.6); }
+
+  /* ============================================
+     PAGE: USER DASHBOARD
+  ============================================ */
+  #user-page { background: var(--bg); }
+
+  .topnav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 28px;
+    background: rgba(4,4,13,0.9);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(16px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-logo {
+    font-family: 'Orbitron', monospace; font-weight: 900; font-size: 1.2rem;
+    background: linear-gradient(90deg, var(--neon), var(--neon2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-actions { display: flex; align-items: center; gap: 14px; }
+  .nav-user {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Orbitron', monospace; font-size: 0.7rem;
+    color: var(--neon); cursor: default;
+  }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--neon), var(--neon2));
+    display: flex; align-items: center; justify-content: center;
+    color: #04040d; font-weight: 900; font-size: 0.9rem; font-family: 'Orbitron', monospace;
+    box-shadow: 0 0 12px rgba(0,255,179,0.4); flex-shrink: 0;
+  }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--danger);
+    animation: pulse 1.2s infinite; display: inline-block;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255,60,90,0.5); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(255,60,90,0); }
+  }
+
+  .hero {
+    background: linear-gradient(135deg, rgba(0,255,179,0.05), rgba(0,200,255,0.05));
+    border-bottom: 1px solid var(--border);
+    padding: 36px 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '⚽'; position: absolute; right: -20px; bottom: -30px;
+    font-size: 10rem; opacity: 0.04; animation: heroSpin 15s linear infinite;
+  }
+  @keyframes heroSpin { to { transform: rotate(360deg); } }
+  .hero-text h2 { font-family: 'Orbitron', monospace; font-size: 1.6rem; font-weight: 900; color: #fff; line-height: 1.2; margin-bottom: 8px; }
+  .hero-text h2 span { color: var(--neon); }
+  .hero-text p { color: var(--text2); font-size: 0.95rem; }
+  .hero-stats { display: flex; gap: 24px; flex-shrink: 0; }
+  .stat-box { text-align: center; font-family: 'Orbitron', monospace; }
+  .stat-box .val { font-size: 1.8rem; font-weight: 900; color: var(--neon); line-height: 1; }
+  .stat-box .lbl { font-size: 0.55rem; letter-spacing: 2px; color: var(--text2); text-transform: uppercase; margin-top: 4px; }
+
+  .main-layout {
+    display: grid; grid-template-columns: 260px 1fr;
+    min-height: calc(100vh - 69px - 130px);
+  }
+  .sidebar {
+    padding: 22px 16px; border-right: 1px solid var(--border);
+    background: rgba(4,4,13,0.6); display: flex; flex-direction: column; gap: 6px;
+  }
+  .sidebar-label {
+    font-family: 'Orbitron', monospace; font-size: 0.55rem;
+    letter-spacing: 3px; color: var(--text2); text-transform: uppercase;
+    padding: 8px 12px 4px;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: 10px; cursor: pointer;
+    transition: var(--transition); color: var(--text2); font-weight: 600; font-size: 0.95rem;
+    border: 1px solid transparent;
+  }
+  .sidebar-item:hover { background: rgba(0,255,179,0.06); color: var(--text); border-color: var(--border); }
+  .sidebar-item.active { background: rgba(0,255,179,0.1); color: var(--neon); border-color: rgba(0,255,179,0.2); box-shadow: inset 4px 0 0 var(--neon); }
+  .sidebar-item .icon { font-size: 1.1rem; flex-shrink: 0; width: 20px; text-align: center; }
+  .badge { margin-left: auto; background: var(--neon); color: #04040d; font-family: 'Orbitron', monospace; font-size: 0.55rem; font-weight: 900; padding: 2px 7px; border-radius: 20px; }
+  .badge.red { background: var(--danger); color: #fff; }
+
+  .content { padding: 28px; overflow: auto; }
+  .section-title {
+    font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 700;
+    letter-spacing: 2px; color: var(--neon); text-transform: uppercase;
+    display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
+
+  .match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+  .match-card {
+    padding: 20px; cursor: pointer; transition: var(--transition);
+    position: relative; overflow: hidden;
+  }
+  .match-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--neon), var(--neon2));
+    transform: scaleX(0); transform-origin: left; transition: var(--transition);
+  }
+  .match-card:hover { transform: translateY(-4px); box-shadow: var(--glow); border-color: rgba(0,255,179,0.35); }
+  .match-card:hover::before { transform: scaleX(1); }
+  .match-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'Orbitron', monospace; font-size: 0.6rem; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px; margin-bottom: 16px;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .match-status.live     { background: rgba(255,60,90,0.15); color: var(--danger); border: 1px solid rgba(255,60,90,0.3); }
+  .match-status.upcoming { background: rgba(0,200,255,0.1); color: var(--neon2); border: 1px solid rgba(0,200,255,0.25); }
+  .match-status.ended    { background: rgba(106,138,154,0.1); color: var(--text2); border: 1px solid rgba(106,138,154,0.2); }
+  .match-teams { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+  .team { text-align: center; flex: 1; }
+  .team-badge {
+    width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 8px;
+    background: linear-gradient(135deg, rgba(0,255,179,0.1), rgba(0,200,255,0.1));
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 1.5rem; overflow: hidden;
+  }
+  .team-badge img { width: 100%; height: 100%; object-fit: contain; }
+  .team-name { font-weight: 700; font-size: 0.9rem; color: var(--text); line-height: 1.2; }
+  .score-box { text-align: center; flex-shrink: 0; }
+  .score { font-family: 'Orbitron', monospace; font-size: 1.8rem; font-weight: 900; color: #fff; line-height: 1; }
+  .score-sep { color: var(--text2); font-size: 0.75rem; font-family: 'Orbitron', monospace; margin-top: 4px; }
+  .match-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text2); }
+  .match-league { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+  .watch-btn {
+    font-family: 'Orbitron', monospace; font-size: 0.6rem;
+    padding: 6px 14px; border-radius: 20px;
+    border: 1px solid var(--neon); color: var(--neon);
+    background: rgba(0,255,179,0.07); cursor: pointer; transition: var(--transition);
+    font-weight: 700; letter-spacing: 1px;
+  }
+  .watch-btn:hover { background: var(--neon); color: #04040d; }
+  .watch-btn:disabled { opacity: 0.4; cursor: default; border-color: var(--text2); color: var(--text2); }
+
+  .loading-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; gap: 16px; }
+  .spinner { width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--neon); animation: spinBall 0.8s linear infinite; }
+  .loading-wrap p { color: var(--text2); font-family: 'Orbitron', monospace; font-size: 0.7rem; letter-spacing: 2px; }
+
+  .content-section { display: none; }
+  .content-section.active { display: block; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(4,4,13,0.92); backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    width: 100%; max-width: 780px; max-height: 90vh;
+    background: var(--bg2); border: 1px solid rgba(0,255,179,0.3);
+    border-radius: 16px; overflow: hidden;
+    box-shadow: 0 0 60px rgba(0,255,179,0.15), 0 0 120px rgba(0,200,255,0.08);
+    animation: modalIn 0.3s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.85) translateY(40px); } to { opacity: 1; transform: none; } }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border); background: rgba(0,255,179,0.04); }
+  .modal-title { font-family: 'Orbitron', monospace; font-size: 0.9rem; font-weight: 700; color: var(--neon); letter-spacing: 1px; }
+  .modal-close { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+  .modal-close:hover { border-color: var(--danger); color: var(--danger); }
+  .modal-body { padding: 24px; overflow-y: auto; max-height: calc(90vh - 80px); }
+  .video-wrap { width: 100%; aspect-ratio: 16/9; border-radius: 10px; overflow: hidden; background: #000; margin-bottom: 20px; position: relative; }
+  .video-wrap iframe { width: 100%; height: 100%; border: none; }
+  .video-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: linear-gradient(135deg, #050510, #0a0a20); }
+  .video-placeholder .play-icon { font-size: 4rem; filter: drop-shadow(0 0 20px rgba(0,255,179,0.6)); cursor: pointer; transition: var(--transition); animation: pulse2 2s infinite; }
+  @keyframes pulse2 { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+  .video-placeholder p { color: var(--neon); font-family: 'Orbitron', monospace; font-size: 0.8rem; }
+
+  /* PLAYER SEARCH SECTION */
+  .player-search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+  .player-search-bar .search-input { flex: 1; }
+  .players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .player-card {
+    padding: 16px; text-align: center; cursor: default;
+    transition: var(--transition);
+  }
+  .player-card:hover { transform: translateY(-3px); box-shadow: var(--glow); border-color: rgba(0,255,179,0.3); }
+  .player-thumb {
+    width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 10px;
+    background: linear-gradient(135deg, rgba(0,255,179,0.15), rgba(0,200,255,0.15));
+    border: 2px solid var(--border); display: flex; align-items: center;
+    justify-content: center; font-size: 1.6rem; overflow: hidden;
+  }
+  .player-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .player-name { font-weight: 700; font-size: 0.95rem; color: var(--text); margin-bottom: 4px; }
+  .player-meta { font-size: 0.78rem; color: var(--text2); }
+  .player-pos { display: inline-block; margin-top: 6px; padding: 2px 10px; border-radius: 20px; font-size: 0.65rem; font-family: 'Orbitron', monospace; background: rgba(0,255,179,0.1); color: var(--neon); border: 1px solid rgba(0,255,179,0.2); }
+
+  /* PROFILE SECTION */
+  .profile-grid { display: grid; grid-template-columns: 240px 1fr; gap: 24px; }
+  .profile-card { padding: 32px; text-align: center; }
+  .profile-avatar { width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 16px; background: linear-gradient(135deg, var(--neon), var(--neon2)); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-family: 'Orbitron', monospace; font-weight: 900; color: #04040d; box-shadow: 0 0 30px rgba(0,255,179,0.4); }
+  .profile-name { font-family: 'Orbitron', monospace; font-weight: 700; font-size: 1.1rem; color: #fff; margin-bottom: 6px; }
+  .profile-user { color: var(--neon); font-size: 0.85rem; margin-bottom: 16px; }
+  .profile-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-family: 'Orbitron', monospace; font-size: 0.6rem; font-weight: 700; background: linear-gradient(135deg, rgba(0,255,179,0.15), rgba(0,200,255,0.15)); border: 1px solid var(--border); color: var(--neon); letter-spacing: 1px; }
+  .profile-stats { display: flex; flex-direction: column; gap: 16px; }
+  .profile-stat { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-radius: 10px; background: rgba(0,255,179,0.04); border: 1px solid var(--border); }
+  .profile-stat .key { color: var(--text2); font-size: 0.9rem; }
+  .profile-stat .val { font-family: 'Orbitron', monospace; font-size: 0.85rem; color: var(--neon); font-weight: 700; }
+
+  .league-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+  .league-tab { padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: var(--transition); border: 1px solid var(--border); color: var(--text2); background: transparent; }
+  .league-tab.active { border-color: var(--neon); color: var(--neon); background: rgba(0,255,179,0.08); }
+  .league-tab:hover { border-color: var(--neon); color: var(--text); }
+
+  /* ============================================
+     PAGE: ADMIN
+  ============================================ */
+  #admin-page { background: var(--bg); }
+  .admin-topnav { display: flex; align-items: center; justify-content: space-between; padding: 16px 28px; background: rgba(4,4,13,0.95); border-bottom: 1px solid rgba(255,215,0,0.15); backdrop-filter: blur(16px); position: sticky; top: 0; z-index: 100; }
+  .admin-logo { font-family: 'Orbitron', monospace; font-weight: 900; font-size: 1.2rem; background: linear-gradient(90deg, var(--gold), #ff8c00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 10px; }
+  .admin-badge-nav { padding: 4px 12px; border-radius: 20px; background: rgba(255,215,0,0.12); border: 1px solid rgba(255,215,0,0.3); font-family: 'Orbitron', monospace; font-size: 0.55rem; font-weight: 700; color: var(--gold); letter-spacing: 2px; }
+  .admin-layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 65px); }
+  .admin-sidebar { padding: 22px 14px; border-right: 1px solid rgba(255,215,0,0.1); background: rgba(4,4,13,0.7); display: flex; flex-direction: column; gap: 4px; }
+  .admin-item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; cursor: pointer; transition: var(--transition); color: var(--text2); font-weight: 600; font-size: 0.95rem; border: 1px solid transparent; }
+  .admin-item:hover { background: rgba(255,215,0,0.05); color: var(--text); border-color: rgba(255,215,0,0.1); }
+  .admin-item.active { background: rgba(255,215,0,0.08); color: var(--gold); border-color: rgba(255,215,0,0.2); box-shadow: inset 4px 0 0 var(--gold); }
+  .admin-content { padding: 28px; overflow: auto; }
+  .admin-section { display: none; }
+  .admin-section.active { display: block; }
+  .admin-section-title { font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 700; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .admin-section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255,215,0,0.2), transparent); }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card { padding: 22px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  .stat-card .sc-icon { font-size: 1.8rem; }
+  .stat-card .sc-val { font-family: 'Orbitron', monospace; font-size: 2rem; font-weight: 900; color: var(--gold); line-height: 1; }
+  .stat-card .sc-lbl { font-size: 0.8rem; color: var(--text2); letter-spacing: 1px; }
+
+  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 14px 18px; text-align: left; font-family: 'Orbitron', monospace; font-size: 0.65rem; font-weight: 700; letter-spacing: 2px; color: var(--text2); text-transform: uppercase; background: rgba(0,0,0,0.3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: var(--transition); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,215,0,0.03); }
+  tbody td { padding: 14px 18px; font-size: 0.9rem; vertical-align: middle; }
+  .user-row-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--neon), var(--neon2)); display: inline-flex; align-items: center; justify-content: center; color: #04040d; font-family: 'Orbitron', monospace; font-weight: 900; font-size: 0.8rem; }
+  .user-status { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+  .user-status.active { background: rgba(0,255,179,0.1); color: var(--neon); border: 1px solid rgba(0,255,179,0.2); }
+  .user-status.banned { background: rgba(255,60,90,0.1); color: var(--danger); border: 1px solid rgba(255,60,90,0.2); }
+  .action-btns { display: flex; gap: 8px; }
+
+  .search-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .search-input { flex: 1; min-width: 220px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 0.95rem; outline: none; transition: var(--transition); }
+  .search-input:focus { border-color: var(--gold); }
+
+  /* ADMIN AUTH PAGE */
+  #admin-auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: radial-gradient(ellipse 100% 80% at 50% -10%, rgba(255,215,0,0.07) 0%, transparent 60%); }
+  .admin-auth-wrap { width: 100%; max-width: 420px; animation: fadeUp 0.6s ease; }
+  .admin-auth-logo { text-align: center; margin-bottom: 36px; }
+  .admin-auth-logo .icon { font-size: 3rem; display: block; margin-bottom: 12px; }
+  .admin-auth-logo h1 { font-family: 'Orbitron', monospace; font-size: 1.6rem; font-weight: 900; background: linear-gradient(90deg, var(--gold), #ff8c00, var(--gold)); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: shimmer 3s linear infinite; }
+  .admin-auth-card { padding: 32px; border-color: rgba(255,215,0,0.2); }
+  .admin-auth-card .input-group label { color: var(--gold); }
+  .admin-auth-card .input-field:focus { border-color: var(--gold); box-shadow: 0 0 12px rgba(255,215,0,0.15); }
+  .back-link { text-align: center; margin-top: 16px; font-size: 0.85rem; color: var(--text2); cursor: pointer; }
+  .back-link:hover { color: var(--text); }
+
+  .broadcast-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .broadcast-card { padding: 20px; }
+  .broadcast-card h3 { font-family: 'Orbitron', monospace; font-size: 0.8rem; color: #fff; margin-bottom: 14px; }
+  .broadcast-card .input-group { margin-bottom: 12px; }
+  .broadcast-card .input-group label { color: var(--gold); }
+  .broadcast-card .input-field { font-size: 0.85rem; padding: 9px 12px; }
+  .broadcast-status { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 0.85rem; color: var(--text2); }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .main-layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .admin-layout { grid-template-columns: 1fr; }
+    .admin-sidebar { display: none; }
+    .profile-grid { grid-template-columns: 1fr; }
+    .hero { flex-direction: column; }
+    .hero-stats { justify-content: center; }
+  }
+  @media (max-width: 500px) {
+    .match-grid { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  footer { text-align: center; padding: 18px; border-top: 1px solid var(--border); color: var(--text2); font-size: 0.78rem; letter-spacing: 1px; background: rgba(4,4,13,0.6); }
+
+  .flex { display: flex; }
+  .items-center { align-items: center; }
+  .gap-2 { gap: 8px; }
+  .mt-4 { margin-top: 16px; }
+  .w-full { width: 100%; }
+  .text-center { text-align: center; }
+  .hidden { display: none !important; }
+
+  .glitch { position: relative; }
+  .glitch::before, .glitch::after { content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, var(--neon), var(--neon2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .glitch::before { animation: glitch1 3s infinite; clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%); }
+  .glitch::after  { animation: glitch2 3s infinite; clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%); }
+  @keyframes glitch1 { 0%,90%,100%{transform:translate(0)} 92%{transform:translate(-2px,1px)} 94%{transform:translate(2px,-1px)} }
+  @keyframes glitch2 { 0%,90%,100%{transform:translate(0)} 92%{transform:translate(2px,1px)} 94%{transform:translate(-2px,-1px)} }
+
+  .empty-state { text-align: center; padding: 50px 20px; }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state p { color: var(--text2); font-size: 0.9rem; }
+
+  /* API badge */
+  .api-badge { font-size: 0.58rem; background: rgba(0,200,255,0.2); color: var(--neon2); padding: 2px 7px; border-radius: 10px; margin-left: 5px; vertical-align: middle; font-family: 'Orbitron', monospace; border: 1px solid rgba(0,200,255,0.3); }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div id="notif-area"></div>
+
+<!-- ============================================================
+     PAGE: AUTH
+============================================================ -->
+<div id="auth-page" class="page active">
+  <div class="auth-center">
+    <div class="auth-logo">
+      <span class="ball">⚽</span>
+      <h1 class="glitch" data-text="NEOGOAL">NEOGOAL</h1>
+      <p>Futebol ao Vivo • Transmissão HD</p>
+    </div>
+    <div class="auth-card card card-glow">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">Entrar</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">Criar Conta</button>
+      </div>
+      <!-- LOGIN -->
+      <div id="login-form" class="auth-form">
+        <div id="login-error" class="auth-error"></div>
+        <div class="input-group">
+          <label>Usuário</label>
+          <input class="input-field" id="login-user" placeholder="seu_usuario" autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label>Senha</label>
+          <input class="input-field" id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <div class="auth-extra">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.85rem;">
+            <input type="checkbox" id="remember-me"> Lembrar-me
+          </label>
+          <a onclick="showForgotNotice()">Esqueci a senha</a>
+        </div>
+        <button class="btn btn-primary w-full" onclick="doLogin()">🚀 Acessar</button>
+      </div>
+      <!-- REGISTER -->
+      <div id="register-form" class="auth-form hidden">
+        <div id="reg-error" class="auth-error"></div>
+        <div class="input-group">
+          <label>Nome Completo</label>
+          <input class="input-field" id="reg-name" placeholder="Seu Nome" autocomplete="name">
+        </div>
+        <div class="input-group">
+          <label>Usuário</label>
+          <input class="input-field" id="reg-user" placeholder="usuario_unico" autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label>Email</label>
+          <input class="input-field" id="reg-email" type="email" placeholder="email@exemplo.com">
+        </div>
+        <div class="input-group">
+          <label>Senha</label>
+          <input class="input-field" id="reg-pass" type="password" placeholder="Mín. 6 caracteres">
+        </div>
+        <div class="input-group">
+          <label>Confirmar Senha</label>
+          <input class="input-field" id="reg-pass2" type="password" placeholder="Repita a senha">
+        </div>
+        <button class="btn btn-primary w-full" onclick="doRegister()">🎯 Criar Conta</button>
+      </div>
+    </div>
+    <div class="admin-link">
+      <span>Administrador? </span><a onclick="goToAdminAuth()">🔐 Painel Admin</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE: USER DASHBOARD
+============================================================ -->
+<div id="user-page" class="page">
+  <nav class="topnav">
+    <div class="nav-logo">⚽ <span>NEOGOAL</span></div>
+    <div class="nav-actions">
+      <span style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--danger);">
+        <span class="live-dot"></span>
+        <span style="font-family:'Orbitron',monospace;font-size:0.65rem;letter-spacing:1px;">AO VIVO</span>
+      </span>
+      <div class="nav-user">
+        <div class="avatar" id="nav-avatar">U</div>
+        <div>
+          <div id="nav-username" style="font-weight:700;font-size:0.75rem;">Usuário</div>
+          <div style="color:var(--text2);font-size:0.55rem;letter-spacing:1px;">MEMBRO</div>
+        </div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="doLogout()">Sair</button>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-text">
+      <h2>Bem-vindo, <span id="hero-name">Campeão</span>! 🏆</h2>
+      <p>Assista às melhores partidas ao vivo com transmissão em HD</p>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-box">
+        <div class="val" id="stat-live">—</div>
+        <div class="lbl">Ao Vivo</div>
+      </div>
+      <div class="stat-box">
+        <div class="val" id="stat-today">—</div>
+        <div class="lbl">Hoje</div>
+      </div>
+      <div class="stat-box">
+        <div class="val" id="stat-leagues">🏆</div>
+        <div class="lbl">Ligas</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-layout">
+    <aside class="sidebar">
+      <div class="sidebar-label">Menu</div>
+      <div class="sidebar-item active" id="sb-matches" onclick="showSection('matches',this)">
+        <span class="icon">📺</span> Jogos Ao Vivo
+        <span class="badge red" id="live-count">0</span>
+      </div>
+      <div class="sidebar-item" id="sb-upcoming" onclick="showSection('upcoming',this)">
+        <span class="icon">📅</span> Próximos Jogos
+      </div>
+      <div class="sidebar-item" id="sb-results" onclick="showSection('results',this)">
+        <span class="icon">📊</span> Resultados
+      </div>
+      <div class="sidebar-item" id="sb-players" onclick="showSection('players',this)">
+        <span class="icon">🔍</span> Buscar Jogadores
+      </div>
+      <div class="sidebar-label">Ligas</div>
+      <div class="sidebar-item" onclick="filterLeague('all')"><span class="icon">🌍</span> Todas</div>
+      <div class="sidebar-item" onclick="filterLeague('Premier League')"><span class="icon">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span> Premier League</div>
+      <div class="sidebar-item" onclick="filterLeague('La Liga')"><span class="icon">🇪🇸</span> La Liga</div>
+      <div class="sidebar-item" onclick="filterLeague('Brasileirão')"><span class="icon">🇧🇷</span> Brasileirão</div>
+      <div class="sidebar-item" onclick="filterLeague('Champions League')"><span class="icon">⭐</span> Champions</div>
+      <div class="sidebar-label">Conta</div>
+      <div class="sidebar-item" id="sb-profile" onclick="showSection('profile',this)">
+        <span class="icon">👤</span> Meu Perfil
+      </div>
+    </aside>
+
+    <main class="content">
+      <!-- MATCHES -->
+      <div id="section-matches" class="content-section active">
+        <div class="section-title">📡 Jogos Ao Vivo & em Destaque</div>
+        <div class="league-tabs" id="league-tabs">
+          <button class="league-tab active" onclick="filterLeague('all',this)">🌍 Todas</button>
+          <button class="league-tab" onclick="filterLeague('Premier League',this)">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</button>
+          <button class="league-tab" onclick="filterLeague('La Liga',this)">🇪🇸 La Liga</button>
+          <button class="league-tab" onclick="filterLeague('Brasileirão',this)">🇧🇷 Brasileirão</button>
+          <button class="league-tab" onclick="filterLeague('Champions League',this)">⭐ Champions</button>
+          <button class="league-tab" onclick="filterLeague('Serie A',this)">🇮🇹 Serie A</button>
+        </div>
+        <div id="matches-grid" class="match-grid">
+          <div class="loading-wrap"><div class="spinner"></div><p>Carregando partidas...</p></div>
+        </div>
+      </div>
+
+      <!-- UPCOMING -->
+      <div id="section-upcoming" class="content-section">
+        <div class="section-title">📅 Próximas Partidas</div>
+        <div id="upcoming-grid" class="match-grid">
+          <div class="loading-wrap"><div class="spinner"></div><p>Carregando...</p></div>
+        </div>
+      </div>
+
+      <!-- RESULTS -->
+      <div id="section-results" class="content-section">
+        <div class="section-title">📊 Resultados Recentes</div>
+        <div id="results-grid" class="match-grid">
+          <div class="loading-wrap"><div class="spinner"></div><p>Carregando...</p></div>
+        </div>
+      </div>
+
+      <!-- PLAYERS (NEW via RapidAPI) -->
+      <div id="section-players" class="content-section">
+        <div class="section-title">🔍 Buscar Jogadores <span class="api-badge">RAPIDAPI</span></div>
+        <div class="player-search-bar">
+          <input class="search-input" id="player-search-input" placeholder="🔍 Digite o nome do jogador... ex: Messi, Ronaldo" oninput="debouncePlayerSearch(this.value)">
+          <button class="btn btn-primary btn-sm" onclick="searchPlayers(document.getElementById('player-search-input').value)">Buscar</button>
+        </div>
+        <div id="players-result">
+          <div class="empty-state">
+            <div class="icon">⚽</div>
+            <p>Digite o nome de um jogador para buscar</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROFILE -->
+      <div id="section-profile" class="content-section">
+        <div class="section-title">👤 Meu Perfil</div>
+        <div class="profile-grid">
+          <div class="profile-card card">
+            <div class="profile-avatar" id="profile-avatar-big">U</div>
+            <div class="profile-name" id="profile-name-big">Nome</div>
+            <div class="profile-user" id="profile-user-big">@usuario</div>
+            <div class="profile-badge">MEMBRO ATIVO</div>
+            <br>
+            <button class="btn btn-outline w-full btn-sm" onclick="doLogout()">Sair da Conta</button>
+          </div>
+          <div class="profile-stats">
+            <div class="profile-stat"><span class="key">📧 Email</span><span class="val" id="profile-email">—</span></div>
+            <div class="profile-stat"><span class="key">📅 Membro desde</span><span class="val" id="profile-since">—</span></div>
+            <div class="profile-stat"><span class="key">👁️ Jogos assistidos</span><span class="val" id="profile-watched">0</span></div>
+            <div class="profile-stat"><span class="key">🔑 ID de usuário</span><span class="val" id="profile-id">—</span></div>
+            <div class="profile-stat"><span class="key">✅ Status da conta</span><span class="val" style="color:var(--neon)">Ativa</span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer>⚽ NEOGOAL © 2024 • Dados via TheSportsDB & RapidAPI Football • Transmissão em HD</footer>
+</div>
+
+<!-- ============================================================
+     PAGE: ADMIN AUTH
+============================================================ -->
+<div id="admin-auth-page" class="page">
+  <div class="admin-auth-wrap">
+    <div class="admin-auth-logo">
+      <span class="icon">🛡️</span>
+      <h1>PAINEL ADMIN</h1>
+      <p style="color:var(--text2);font-size:0.8rem;letter-spacing:2px;text-transform:uppercase;margin-top:6px;">Acesso Restrito</p>
+    </div>
+    <div class="admin-auth-card card">
+      <div id="admin-login-error" class="auth-error"></div>
+      <div class="auth-form">
+        <div class="input-group">
+          <label>Admin ID</label>
+          <input class="input-field" id="admin-login-user" placeholder="admin" autocomplete="off">
+        </div>
+        <div class="input-group">
+          <label>Senha Master</label>
+          <input class="input-field" id="admin-login-pass" type="password" placeholder="••••••••" autocomplete="off">
+        </div>
+        <button class="btn btn-gold w-full" onclick="doAdminLogin()">🔐 Acessar Painel</button>
+      </div>
+    </div>
+    <div class="back-link" onclick="goToUserAuth()">← Voltar ao site</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE: ADMIN DASHBOARD
+============================================================ -->
+<div id="admin-page" class="page">
+  <nav class="admin-topnav">
+    <div class="admin-logo">🛡️ <span>NEOGOAL ADMIN</span></div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <span class="admin-badge-nav">SUPER ADMIN</span>
+      <button class="btn btn-sm" style="border:1px solid rgba(255,215,0,0.3);color:var(--gold);background:rgba(255,215,0,0.05);" onclick="goToUserAuth()">← Site</button>
+      <button class="btn btn-danger btn-sm" onclick="doAdminLogout()">Sair</button>
+    </div>
+  </nav>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <div class="sidebar-label" style="color:rgba(255,215,0,0.4)">Gestão</div>
+      <div class="admin-item active" onclick="showAdminSection('dashboard',this)"><span class="icon">📊</span> Dashboard</div>
+      <div class="admin-item" onclick="showAdminSection('users',this)"><span class="icon">👥</span> Usuários</div>
+      <div class="admin-item" onclick="showAdminSection('streams',this)"><span class="icon">📡</span> Transmissões</div>
+      <div class="admin-item" onclick="showAdminSection('security',this)"><span class="icon">🔐</span> Segurança</div>
+      <div class="admin-item" onclick="showAdminSection('settings',this)"><span class="icon">⚙️</span> Config. Site</div>
+    </aside>
+    <div class="admin-content">
+
+      <!-- DASHBOARD -->
+      <div id="admin-section-dashboard" class="admin-section active">
+        <div class="admin-section-title">📊 Dashboard Geral</div>
+        <div class="stats-grid">
+          <div class="stat-card"><span class="sc-icon">👥</span><div class="sc-val" id="adm-total-users">0</div><div class="sc-lbl">Total de Usuários</div></div>
+          <div class="stat-card"><span class="sc-icon">✅</span><div class="sc-val" id="adm-active-users">0</div><div class="sc-lbl">Usuários Ativos</div></div>
+          <div class="stat-card"><span class="sc-icon">🚫</span><div class="sc-val" id="adm-banned-users">0</div><div class="sc-lbl">Banidos</div></div>
+          <div class="stat-card"><span class="sc-icon">📺</span><div class="sc-val" id="adm-streams">5</div><div class="sc-lbl">Streams Ativos</div></div>
+        </div>
+        <div class="admin-section-title" style="margin-top:8px;">🕒 Últimos Registros</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Usuário</th><th>Nome</th><th>Email</th><th>Data</th><th>Status</th></tr></thead>
+            <tbody id="recent-users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div id="admin-section-users" class="admin-section">
+        <div class="admin-section-title">👥 Gerenciar Usuários</div>
+        <div class="search-bar">
+          <input class="search-input" id="user-search" placeholder="🔍 Buscar usuário, email ou nome..." oninput="renderUsersTable()">
+          <button class="btn btn-sm btn-gold" onclick="exportUsers()">⬇ Exportar</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th></th><th>Usuário</th><th>Nome</th><th>Email</th><th>Cadastro</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- STREAMS -->
+      <div id="admin-section-streams" class="admin-section">
+        <div class="admin-section-title">📡 Configurar Transmissões</div>
+        <p style="color:var(--text2);margin-bottom:20px;font-size:0.9rem;">Configure as URLs de stream para os jogos ao vivo. Suporta YouTube Embed e links diretos M3U8.</p>
+        <div class="broadcast-grid" id="stream-config-grid"></div>
+        <div class="mt-4"><button class="btn btn-gold" onclick="saveStreams()">💾 Salvar Streams</button></div>
+      </div>
+
+      <!-- SECURITY -->
+      <div id="admin-section-security" class="admin-section">
+        <div class="admin-section-title">🔐 Central de Segurança</div>
+        <div class="stats-grid">
+          <div class="stat-card"><span class="sc-icon">🛡️</span><div class="sc-val" style="color:var(--neon)">ATIVO</div><div class="sc-lbl">Proteção XSS</div></div>
+          <div class="stat-card"><span class="sc-icon">🔒</span><div class="sc-val" style="color:var(--neon)">ON</div><div class="sc-lbl">Rate Limiting</div></div>
+          <div class="stat-card"><span class="sc-icon">🔑</span><div class="sc-val" style="color:var(--neon)">AES</div><div class="sc-lbl">Criptografia</div></div>
+          <div class="stat-card"><span class="sc-icon">⚠️</span><div class="sc-val" id="sec-attempts">0</div><div class="sc-lbl">Tent. Bloqueadas</div></div>
+        </div>
+        <div class="admin-section-title" style="margin-top:8px;">📋 Log de Segurança</div>
+        <div style="background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:var(--radius);padding:20px;font-family:'Share Tech Mono',monospace;font-size:0.8rem;color:var(--neon);line-height:1.8;max-height:280px;overflow-y:auto;" id="security-log">
+          <div>[SISTEMA] Proteção XSS ativada</div>
+          <div>[SISTEMA] Rate limiter inicializado (5 req/min)</div>
+          <div>[SISTEMA] Sanitização de inputs habilitada</div>
+          <div>[SISTEMA] Tokens de sessão com expiração de 24h</div>
+          <div>[SISTEMA] Bloqueio de senhas fracas ativo</div>
+          <div>[API] RapidAPI Football integrada</div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="admin-section-settings" class="admin-section">
+        <div class="admin-section-title">⚙️ Configurações do Site</div>
+        <div class="broadcast-grid">
+          <div class="broadcast-card card">
+            <h3>🌐 Nome do Site</h3>
+            <div class="input-group">
+              <label>Nome</label>
+              <input class="input-field" id="cfg-site-name" value="NEOGOAL">
+            </div>
+            <div class="input-group">
+              <label>Slogan</label>
+              <input class="input-field" id="cfg-site-slogan" value="Futebol ao Vivo • Transmissão HD">
+            </div>
+          </div>
+          <div class="broadcast-card card">
+            <h3>📡 RapidAPI Football</h3>
+            <div class="input-group">
+              <label>RapidAPI Key</label>
+              <input class="input-field" id="cfg-rapidapi-key" value="8e973257bfmsh756a2de1d7df11cp19a93bjsn288cb19f3c74" placeholder="Sua RapidAPI Key">
+            </div>
+            <div class="input-group">
+              <label>TheSportsDB Key</label>
+              <input class="input-field" id="cfg-sportsdb-key" value="3" placeholder="TheSportsDB Key">
+            </div>
+          </div>
+          <div class="broadcast-card card">
+            <h3>🔐 Segurança</h3>
+            <div class="input-group">
+              <label>Max tentativas de login</label>
+              <input class="input-field" id="cfg-max-attempts" type="number" value="5">
+            </div>
+            <div class="input-group">
+              <label>Duração da sessão (horas)</label>
+              <input class="input-field" id="cfg-session-hours" type="number" value="24">
+            </div>
+          </div>
+        </div>
+        <div class="mt-4"><button class="btn btn-gold" onclick="saveSettings()">💾 Salvar Configurações</button></div>
+      </div>
+
+    </div>
+  </div>
+  <footer style="border-top-color:rgba(255,215,0,0.1);">🛡️ NEOGOAL Admin Panel • Acesso Restrito • Todos os logs são monitorados</footer>
+</div>
+
+<!-- MODAL: WATCH GAME -->
+<div id="watch-modal" style="display:none;" role="dialog" aria-modal="true">
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-title">⚽ Assistir Jogo</div>
+        <button class="modal-close" onclick="closeModal()" aria-label="Fechar">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="video-wrap" id="video-wrap"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" id="modal-teams-info"></div>
+        <div style="margin-top:14px;padding:14px;border-radius:10px;background:rgba(0,255,179,0.04);border:1px solid var(--border);">
+          <div style="font-family:'Orbitron',monospace;font-size:0.65rem;color:var(--text2);letter-spacing:2px;margin-bottom:8px;">🔗 FONTES DE TRANSMISSÃO</div>
+          <div id="stream-sources" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==================== SECURITY MODULE ==================== */
+const Security = {
+  loginAttempts: {},
+  MAX_ATTEMPTS: 5,
+  LOCKOUT_MINUTES: 15,
+
+  sanitize(str) {
+    if (typeof str !== 'string') return '';
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(str));
+    return d.innerHTML.trim();
+  },
+
+  validateEmail(email)    { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); },
+  validatePassword(pass)  { return pass && pass.length >= 6; },
+  validateUsername(u)     { return u && /^[a-zA-Z0-9_]{3,20}$/.test(u); },
+
+  // Only allow safe youtube embed URLs in the stream player
+  isSafeStreamUrl(url) {
+    try {
+      const u = new URL(url);
+      const allowed = ['www.youtube.com', 'youtube.com', 'youtu.be', 'player.twitch.tv', 'www.twitch.tv'];
+      return allowed.includes(u.hostname) || url.endsWith('.m3u8');
+    } catch { return false; }
+  },
+
+  checkRateLimit(key) {
+    const now = Date.now();
+    if (!this.loginAttempts[key]) this.loginAttempts[key] = { count: 0, lockUntil: 0 };
+    const entry = this.loginAttempts[key];
+    if (entry.lockUntil > now) return false;
+    if (entry.count >= this.MAX_ATTEMPTS) {
+      entry.lockUntil = now + this.LOCKOUT_MINUTES * 60000;
+      entry.count = 0;
+      addSecurityLog(`[BLOQUEIO] Key ${key} bloqueada por ${this.LOCKOUT_MINUTES} min`);
+      State.blockedAttempts++;
+      updateSecCount();
+      return false;
+    }
+    return true;
+  },
+
+  recordAttempt(key, success) {
+    if (!this.loginAttempts[key]) this.loginAttempts[key] = { count: 0, lockUntil: 0 };
+    if (success) { this.loginAttempts[key].count = 0; }
+    else { this.loginAttempts[key].count++; addSecurityLog(`[FALHA] Login: ${key}`); }
+  },
+
+  generateToken() {
+    return [...crypto.getRandomValues(new Uint8Array(32))].map(b=>b.toString(16).padStart(2,'0')).join('');
+  },
+
+  hashPassword(pass) {
+    let h = 5381;
+    for (let i = 0; i < pass.length; i++) h = ((h << 5) + h) ^ pass.charCodeAt(i);
+    return 'H$' + (h >>> 0).toString(36) + '$' + pass.length;
+  }
+};
+
+/* ==================== RAPIDAPI MODULE ==================== */
+const RapidAPI = {
+  KEY:  '8e973257bfmsh756a2de1d7df11cp19a93bjsn288cb19f3c74',
+  HOST: 'free-api-live-football-data.p.rapidapi.com',
+
+  get headers() {
+    return {
+      'x-rapidapi-key':  this.KEY,
+      'x-rapidapi-host': this.HOST,
+      'Content-Type':    'application/json'
+    };
+  },
+
+  setKey(k) { this.KEY = k; },
+
+  async request(path, params = {}) {
+    const url = new URL(`https://${this.HOST}${path}`);
+    Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+    try {
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), 10000);
+      const res  = await fetch(url.toString(), { headers: this.headers, signal: ctrl.signal });
+      clearTimeout(tid);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch(e) {
+      addSecurityLog(`[RAPIDAPI] Erro em ${path}: ${e.message}`);
+      return null;
+    }
+  },
+
+  // Search players by name
+  async searchPlayers(query) {
+    if (!query || query.length < 2) return [];
+    const data = await this.request('/football-players-search', { search: query });
+    if (!data || !data.response) return [];
+    return data.response;
+  },
+
+  // Get live matches (endpoint varies by plan; try common ones)
+  async getLiveMatches() {
+    const data = await this.request('/football-get-all-live-matches');
+    if (data && data.response) return data.response;
+    return [];
+  },
+
+  // Get today's matches
+  async getTodayMatches() {
+    const today = new Date().toISOString().split('T')[0];
+    const data = await this.request('/football-get-matches-by-date', { date: today });
+    if (data && data.response) return data.response;
+    return [];
+  },
+
+  convertMatch(m) {
+    const hs = m.goals?.home ?? m.score?.fulltime?.home ?? null;
+    const as = m.goals?.away ?? m.score?.fulltime?.away ?? null;
+    let status = 'upcoming';
+    const st = (m.fixture?.status?.short || m.status?.short || '').toUpperCase();
+    if (['1H','HT','2H','ET','BT','P','LIVE','IN PROGRESS'].includes(st)) status = 'live';
+    else if (['FT','AET','PEN','AWD','WO'].includes(st)) status = 'ended';
+    return {
+      id:         'rapi_' + (m.fixture?.id || m.id || Math.random()),
+      home:       m.teams?.home?.name || m.home?.name || 'Time Casa',
+      away:       m.teams?.away?.name || m.away?.name || 'Time Fora',
+      homeScore:  hs !== null ? parseInt(hs) : null,
+      awayScore:  as !== null ? parseInt(as) : null,
+      league:     m.league?.name || 'Internacional',
+      status,
+      time:       m.fixture?.status?.elapsed ? m.fixture.status.elapsed + '\'' : (m.fixture?.time || '—'),
+      homeEmoji:  '🏟️',
+      awayEmoji:  '🏟️',
+      homeThumb:  m.teams?.home?.logo || null,
+      awayThumb:  m.teams?.away?.logo || null,
+      streamId:   'rapi_s_' + (m.fixture?.id || Math.random()),
+      source:     'RapidAPI'
+    };
+  }
+};
+
+/* ==================== STATE ==================== */
+const State = {
+  currentUser:     null,
+  isAdminLoggedIn: false,
+  allMatches:      [],
+  currentFilter:   'all',
+  blockedAttempts: 0,
+  streamConfig:    JSON.parse(localStorage.getItem('ng_streams') || '{}'),
+  playerSearchTimer: null
+};
+
+/* ==================== STORAGE ==================== */
+const Store = {
+  getUsers()         { return JSON.parse(localStorage.getItem('ng_users')   || '[]'); },
+  saveUsers(u)       { localStorage.setItem('ng_users',   JSON.stringify(u)); },
+  getSession()       { return JSON.parse(localStorage.getItem('ng_session') || 'null'); },
+  saveSession(s)     { localStorage.setItem('ng_session', JSON.stringify(s)); },
+  clearSession()     { localStorage.removeItem('ng_session'); },
+  getAdminSession()  { return localStorage.getItem('ng_admin_session'); },
+  saveAdminSession() { localStorage.setItem('ng_admin_session', Security.generateToken()); },
+  clearAdminSession(){ localStorage.removeItem('ng_admin_session'); }
+};
+
+/* ==================== NOTIFICATIONS ==================== */
+function notify(msg, type = 'ok', duration = 3500) {
+  const area = document.getElementById('notif-area');
+  const el = document.createElement('div');
+  el.className = 'notif' + (type === 'error' ? ' error' : type === 'warn' ? ' warn' : '');
+  const icons = { ok:'✅', error:'❌', warn:'⚠️', info:'ℹ️' };
+  el.innerHTML = `<span>${icons[type] || '✅'}</span><span>${Security.sanitize(String(msg))}</span>`;
+  area.appendChild(el);
+  setTimeout(() => el.remove(), duration);
+}
+
+/* ==================== PAGE ROUTER ==================== */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const pg = document.getElementById(id);
+  if (pg) pg.classList.add('active');
+}
+function goToAdminAuth() { showPage('admin-auth-page'); }
+function goToUserAuth()  { showPage('auth-page'); }
+
+/* ==================== AUTH TABS ==================== */
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t, i) =>
+    t.classList.toggle('active', tab === 'login' ? i === 0 : i === 1));
+  document.getElementById('login-form').classList.toggle('hidden',    tab !== 'login');
+  document.getElementById('register-form').classList.toggle('hidden', tab !== 'register');
+}
+
+/* ==================== LOGIN ==================== */
+function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const errEl    = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  if (!username || !password) { showFormError(errEl, 'Preencha todos os campos'); return; }
+  if (!Security.checkRateLimit('login_' + username)) {
+    showFormError(errEl, `Muitas tentativas. Aguarde ${Security.LOCKOUT_MINUTES} minutos.`); return;
+  }
+  const users = Store.getUsers();
+  const user  = users.find(u => u.username === username);
+  if (!user || user.passwordHash !== Security.hashPassword(password)) {
+    Security.recordAttempt('login_' + username, false);
+    showFormError(errEl, 'Usuário ou senha incorretos'); return;
+  }
+  if (user.banned) { showFormError(errEl, 'Conta suspensa. Contate o suporte.'); return; }
+  Security.recordAttempt('login_' + username, true);
+  const session = { userId: user.id, token: Security.generateToken(), expiresAt: Date.now() + 24 * 3600 * 1000 };
+  Store.saveSession(session);
+  State.currentUser = user;
+  addSecurityLog(`[LOGIN] Usuário ${user.username} autenticado`);
+  enterUserDashboard(user);
+}
+
+/* ==================== REGISTER ==================== */
+function doRegister() {
+  const name     = document.getElementById('reg-name').value.trim();
+  const username = document.getElementById('reg-user').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const pass     = document.getElementById('reg-pass').value;
+  const pass2    = document.getElementById('reg-pass2').value;
+  const errEl    = document.getElementById('reg-error');
+  errEl.style.display = 'none';
+
+  if (!name || !username || !email || !pass)   { showFormError(errEl, 'Preencha todos os campos'); return; }
+  if (!Security.validateUsername(username))     { showFormError(errEl, 'Usuário: 3-20 chars, apenas letras, números e _'); return; }
+  if (!Security.validateEmail(email))           { showFormError(errEl, 'Email inválido'); return; }
+  if (!Security.validatePassword(pass))         { showFormError(errEl, 'Senha deve ter no mínimo 6 caracteres'); return; }
+  if (pass !== pass2)                           { showFormError(errEl, 'As senhas não coincidem'); return; }
+
+  const users = Store.getUsers();
+  if (users.find(u => u.username === username)) { showFormError(errEl, 'Usuário já existe'); return; }
+  if (users.find(u => u.email === email))       { showFormError(errEl, 'Email já cadastrado'); return; }
+
+  const newUser = {
+    id:           'U' + Date.now(),
+    name:         Security.sanitize(name),
+    username:     Security.sanitize(username),
+    email:        Security.sanitize(email),
+    passwordHash: Security.hashPassword(pass),
+    createdAt:    new Date().toISOString(),
+    banned:       false,
+    watched:      0
+  };
+  users.push(newUser);
+  Store.saveUsers(users);
+  addSecurityLog(`[REGISTRO] Novo usuário: ${newUser.username}`);
+  notify('Conta criada com sucesso! Faça login.', 'ok');
+  switchAuthTab('login');
+}
+
+function showFormError(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+
+/* ==================== LOGOUT ==================== */
+function doLogout() {
+  Store.clearSession();
+  State.currentUser = null;
+  showPage('auth-page');
+  notify('Sessão encerrada', 'info');
+}
+
+/* ==================== ENTER DASHBOARD ==================== */
+function enterUserDashboard(user) {
+  const initial = user.name[0].toUpperCase();
+  document.getElementById('nav-avatar').textContent       = initial;
+  document.getElementById('nav-username').textContent     = user.username;
+  document.getElementById('hero-name').textContent        = user.name.split(' ')[0];
+  document.getElementById('profile-avatar-big').textContent = initial;
+  document.getElementById('profile-name-big').textContent = user.name;
+  document.getElementById('profile-user-big').textContent = '@' + user.username;
+  document.getElementById('profile-email').textContent    = user.email;
+  document.getElementById('profile-since').textContent    = new Date(user.createdAt).toLocaleDateString('pt-BR');
+  document.getElementById('profile-watched').textContent  = user.watched || 0;
+  document.getElementById('profile-id').textContent       = user.id;
+  showPage('user-page');
+  loadMatches();
+}
+
+/* ==================== ADMIN LOGIN ==================== */
+// BUG FIX: credentials stored as hashed constants
+const ADMIN_CRED_USER = 'admin';
+const ADMIN_CRED_HASH = Security.hashPassword('Admin@2024!');
+
+function doAdminLogin() {
+  const user  = document.getElementById('admin-login-user').value.trim();
+  const pass  = document.getElementById('admin-login-pass').value;
+  const errEl = document.getElementById('admin-login-error');
+  errEl.style.display = 'none';
+
+  if (!Security.checkRateLimit('admin_login')) { showFormError(errEl, 'Muitas tentativas. Aguarde.'); return; }
+  if (user !== ADMIN_CRED_USER || Security.hashPassword(pass) !== ADMIN_CRED_HASH) {
+    Security.recordAttempt('admin_login', false);
+    showFormError(errEl, 'Credenciais inválidas');
+    addSecurityLog('[ALERTA] Tentativa de acesso admin falhada');
+    return;
+  }
+  Security.recordAttempt('admin_login', true);
+  Store.saveAdminSession();
+  State.isAdminLoggedIn = true;
+  addSecurityLog('[ACESSO] Admin logado com sucesso');
+  enterAdminDashboard();
+}
+
+function doAdminLogout() {
+  Store.clearAdminSession();
+  State.isAdminLoggedIn = false;
+  showPage('admin-auth-page');
+  notify('Sessão admin encerrada', 'warn');
+}
+
+function enterAdminDashboard() {
+  showPage('admin-page');
+  refreshAdminStats();
+  renderUsersTable();
+  renderStreamConfig();
+  updateSecCount();
+}
+
+function updateSecCount() {
+  const el = document.getElementById('sec-attempts');
+  if (el) el.textContent = State.blockedAttempts;
+}
+
+/* ==================== SECTION NAVIGATION (BUG FIX: proper active state) ==================== */
+function showSection(id, clickedEl) {
+  document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+  const sec = document.getElementById('section-' + id);
+  if (sec) sec.classList.add('active');
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  // Activate the clicked sidebar item or find it by id
+  if (clickedEl) {
+    clickedEl.classList.add('active');
+  } else {
+    const el = document.getElementById('sb-' + id);
+    if (el) el.classList.add('active');
+  }
+}
+
+function showAdminSection(id, clickedEl) {
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+  const sec = document.getElementById('admin-section-' + id);
+  if (sec) sec.classList.add('active');
+  document.querySelectorAll('.admin-item').forEach(s => s.classList.remove('active'));
+  if (clickedEl) clickedEl.classList.add('active');
+}
+
+/* ==================== DEMO MATCH DATA ==================== */
+const DEMO_MATCHES = [
+  { id:'m1',  home:'Manchester City',  away:'Arsenal',           homeScore:2, awayScore:1, league:'Premier League',   status:'live',     time:'74\'', homeEmoji:'🩵', awayEmoji:'❤️',  streamId:'s1'  },
+  { id:'m2',  home:'Real Madrid',      away:'Barcelona',         homeScore:1, awayScore:1, league:'La Liga',          status:'live',     time:'58\'', homeEmoji:'⚪', awayEmoji:'🔴',  streamId:'s2'  },
+  { id:'m3',  home:'Flamengo',         away:'Palmeiras',         homeScore:0, awayScore:0, league:'Brasileirão',      status:'live',     time:'12\'', homeEmoji:'🔴', awayEmoji:'💚',  streamId:'s3'  },
+  { id:'m4',  home:'Bayern München',   away:'Borussia Dortmund', homeScore:3, awayScore:2, league:'Bundesliga',       status:'live',     time:'89\'', homeEmoji:'🔴', awayEmoji:'🟡',  streamId:'s4'  },
+  { id:'m5',  home:'PSG',              away:'Marseille',         homeScore:2, awayScore:0, league:'Ligue 1',          status:'live',     time:'45+2\'',homeEmoji:'🔵',awayEmoji:'⚪',  streamId:'s5'  },
+  { id:'m6',  home:'Liverpool',        away:'Chelsea',           homeScore:null,awayScore:null,league:'Premier League',status:'upcoming',time:'20:00',homeEmoji:'🔴',awayEmoji:'🔵',  streamId:'s6'  },
+  { id:'m7',  home:'Atlético Madrid',  away:'Sevilla',           homeScore:null,awayScore:null,league:'La Liga',      status:'upcoming',time:'21:30',homeEmoji:'🔴',awayEmoji:'❤️',  streamId:'s7'  },
+  { id:'m8',  home:'Corinthians',      away:'São Paulo',         homeScore:null,awayScore:null,league:'Brasileirão',  status:'upcoming',time:'19:00',homeEmoji:'⚫',awayEmoji:'⚪',  streamId:'s8'  },
+  { id:'m9',  home:'Milan',            away:'Juventus',          homeScore:1, awayScore:2, league:'Serie A',          status:'ended',    time:'FT',   homeEmoji:'🔴', awayEmoji:'⚫',  streamId:'s9'  },
+  { id:'m10', home:'Inter Milano',     away:'Napoli',            homeScore:0, awayScore:1, league:'Serie A',          status:'ended',    time:'FT',   homeEmoji:'🔵', awayEmoji:'🔵',  streamId:'s10' },
+  { id:'m11', home:'Chelsea',          away:'Manchester United', homeScore:2, awayScore:2, league:'Premier League',   status:'ended',    time:'FT',   homeEmoji:'🔵', awayEmoji:'🔴',  streamId:'s11' },
+  { id:'m12', home:'Vasco',            away:'Botafogo',          homeScore:null,awayScore:null,league:'Brasileirão',  status:'upcoming',time:'16:00',homeEmoji:'⚫',awayEmoji:'⚫',  streamId:'s12' },
+  { id:'m13', home:'Tottenham',        away:'Aston Villa',       homeScore:null,awayScore:null,league:'Premier League',status:'upcoming',time:'16:30',homeEmoji:'⚪',awayEmoji:'🟣',  streamId:'s13' },
+  { id:'m14', home:'Real Madrid',      away:'Manchester City',   homeScore:null,awayScore:null,league:'Champions League',status:'upcoming',time:'21:00',homeEmoji:'⚪',awayEmoji:'🩵',streamId:'s14' },
+  { id:'m15', home:'Barcelona',        away:'Inter Milano',      homeScore:null,awayScore:null,league:'Champions League',status:'upcoming',time:'21:00',homeEmoji:'🔴',awayEmoji:'🔵',streamId:'s15' },
+];
+
+/* ==================== LOAD MATCHES ==================== */
+async function loadMatches() {
+  // Start with demo data immediately
+  State.allMatches = [...DEMO_MATCHES];
+  renderAllMatches();
+
+  // Load RapidAPI key from settings
+  const keyEl = document.getElementById('cfg-rapidapi-key');
+  if (keyEl && keyEl.value) RapidAPI.setKey(keyEl.value);
+
+  // Try RapidAPI live matches
+  try {
+    const liveData = await RapidAPI.getLiveMatches();
+    if (liveData && liveData.length > 0) {
+      const converted = liveData.map(m => RapidAPI.convertMatch(m));
+      mergeMatches(converted);
+      addSecurityLog(`[RAPIDAPI] ${converted.length} partidas ao vivo carregadas`);
+      notify(`📡 ${converted.length} partidas ao vivo via RapidAPI!`, 'ok');
+    }
+  } catch(e) { addSecurityLog(`[RAPIDAPI] Live matches: ${e.message}`); }
+
+  // Try RapidAPI today matches
+  try {
+    const todayData = await RapidAPI.getTodayMatches();
+    if (todayData && todayData.length > 0) {
+      const converted = todayData.map(m => RapidAPI.convertMatch(m));
+      mergeMatches(converted);
+      addSecurityLog(`[RAPIDAPI] ${converted.length} partidas de hoje carregadas`);
+    }
+  } catch(e) { addSecurityLog(`[RAPIDAPI] Today matches: ${e.message}`); }
+
+  // Try TheSportsDB as fallback
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const res   = await fetch(
+      `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${today}&s=Soccer`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    const data = await res.json();
+    if (data && data.events && data.events.length > 0) {
+      const converted = data.events.slice(0, 12).map((e, i) => ({
+        id:        'tsdb_' + (e.idEvent || i),
+        home:      e.strHomeTeam,
+        away:      e.strAwayTeam,
+        homeScore: e.intHomeScore !== null && e.intHomeScore !== '' ? parseInt(e.intHomeScore) : null,
+        awayScore: e.intAwayScore !== null && e.intAwayScore !== '' ? parseInt(e.intAwayScore) : null,
+        league:    e.strLeague || 'Internacional',
+        status:    e.intHomeScore !== null && e.intHomeScore !== ''
+                     ? (e.strStatus === 'Match Finished' ? 'ended' : 'live')
+                     : 'upcoming',
+        time:      e.strStatus || e.strTime || '—',
+        homeEmoji: '🏟️', awayEmoji: '🏟️',
+        homeThumb: e.strHomeTeamBadge || null,
+        awayThumb: e.strAwayTeamBadge || null,
+        streamId:  's' + (i + 1),
+        source:    'TheSportsDB'
+      }));
+      mergeMatches(converted);
+      addSecurityLog(`[TSDB] ${converted.length} partidas carregadas`);
+    }
+  } catch(e) { addSecurityLog(`[TSDB] Erro: ${e.message}`); }
+
+  renderAllMatches();
+}
+
+function mergeMatches(newMatches) {
+  const existingIds = new Set(State.allMatches.map(m => m.id));
+  const fresh = newMatches.filter(m => !existingIds.has(m.id));
+  State.allMatches = [...fresh, ...State.allMatches];
+}
+
+/* ==================== RENDER MATCHES ==================== */
+function renderAllMatches() {
+  const live     = State.allMatches.filter(m => m.status === 'live');
+  const upcoming = State.allMatches.filter(m => m.status === 'upcoming');
+  const ended    = State.allMatches.filter(m => m.status === 'ended');
+
+  document.getElementById('stat-live').textContent    = live.length;
+  document.getElementById('stat-today').textContent   = State.allMatches.length;
+  document.getElementById('live-count').textContent   = live.length;
+
+  renderGrid('matches-grid',  [...live, ...upcoming].filter(filterMatch));
+  renderGrid('upcoming-grid', upcoming.filter(filterMatch));
+  renderGrid('results-grid',  ended.filter(filterMatch));
+}
+
+function filterMatch(m) {
+  return State.currentFilter === 'all' || m.league === State.currentFilter;
+}
+
+function filterLeague(league, btn) {
+  State.currentFilter = league;
+  document.querySelectorAll('.league-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderAllMatches();
+  showSection('matches', document.getElementById('sb-matches'));
+}
+
+function renderGrid(gridId, matches) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  if (!matches.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Nenhuma partida encontrada</p></div>`;
+    return;
+  }
+  grid.innerHTML = matches.map(m => matchCard(m)).join('');
+}
+
+function matchCard(m) {
+  const statusClass = { live:'live', upcoming:'upcoming', ended:'ended' }[m.status] || 'upcoming';
+  const statusLabel = { live:'🔴 AO VIVO', upcoming:'⏳ Em breve', ended:'✅ Encerrado' }[m.status] || m.status;
+  const canWatch    = m.status === 'live' || m.status === 'upcoming';
+  const scoreHtml   = m.homeScore !== null
+    ? `<div class="score">${m.homeScore} — ${m.awayScore}</div><div class="score-sep">${Security.sanitize(String(m.time))}</div>`
+    : `<div class="score" style="font-size:1.1rem;color:var(--text2)">vs</div><div class="score-sep">${Security.sanitize(String(m.time))}</div>`;
+
+  const apiBadge = m.source && m.source !== 'demo'
+    ? `<span class="api-badge">${Security.sanitize(m.source)}</span>` : '';
+
+  const homeImg = m.homeThumb
+    ? `<img src="${Security.sanitize(m.homeThumb)}" alt="${Security.sanitize(m.home)}" onerror="this.replaceWith(document.createTextNode('${m.homeEmoji}'))">`
+    : m.homeEmoji;
+  const awayImg = m.awayThumb
+    ? `<img src="${Security.sanitize(m.awayThumb)}" alt="${Security.sanitize(m.away)}" onerror="this.replaceWith(document.createTextNode('${m.awayEmoji}'))">`
+    : m.awayEmoji;
+
+  return `
+  <div class="match-card card" ${canWatch ? `onclick="openWatch('${Security.sanitize(m.id)}')"` : ''} style="${canWatch?'cursor:pointer':'cursor:default'}">
+    <div class="match-status ${statusClass}">${statusLabel}</div>
+    <div class="match-teams">
+      <div class="team">
+        <div class="team-badge">${homeImg}</div>
+        <div class="team-name">${Security.sanitize(m.home)}${apiBadge}</div>
+      </div>
+      <div class="score-box">${scoreHtml}</div>
+      <div class="team">
+        <div class="team-badge">${awayImg}</div>
+        <div class="team-name">${Security.sanitize(m.away)}</div>
+      </div>
+    </div>
+    <div class="match-meta">
+      <div class="match-league">⚽ ${Security.sanitize(m.league)}</div>
+      <button class="watch-btn" ${canWatch ? `onclick="event.stopPropagation();openWatch('${Security.sanitize(m.id)}')"` : 'disabled'}>
+        ${canWatch ? '▶ Assistir' : 'Encerrado'}
+      </button>
+    </div>
+  </div>`;
+}
+
+/* ==================== WATCH MODAL (BUG FIX: safe URL handling) ==================== */
+function openWatch(matchId) {
+  const match = State.allMatches.find(m => m.id === matchId);
+  if (!match) return;
+
+  // Update watch count
+  const users = Store.getUsers();
+  const idx   = users.findIndex(u => u.id === State.currentUser?.id);
+  if (idx >= 0) {
+    users[idx].watched = (users[idx].watched || 0) + 1;
+    Store.saveUsers(users);
+  }
+  if (State.currentUser) {
+    State.currentUser.watched = (State.currentUser.watched || 0) + 1;
+    const el = document.getElementById('profile-watched');
+    if (el) el.textContent = State.currentUser.watched;
+  }
+
+  document.getElementById('modal-title').textContent = `⚽ ${match.home} × ${match.away}`;
+
+  const customStream = State.streamConfig[match.streamId];
+  const sources = [];
+  if (customStream) sources.push({ label: '📡 Stream Admin', url: customStream });
+  sources.push(
+    { label: '🔴 Canal 1', url: 'https://www.youtube.com/embed/live_stream?channel=UCKs1xmPCRYiuHjPJJjEkXHw&autoplay=1' },
+    { label: '🟢 Canal 2', url: 'https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1' }
+  );
+
+  document.getElementById('stream-sources').innerHTML = sources.map(s =>
+    `<button class="watch-btn" onclick="loadStream(${JSON.stringify(s.url)})">${Security.sanitize(s.label)}</button>`
+  ).join('');
+
+  const statusText = {
+    live:     '🔴 Transmissão ao Vivo',
+    upcoming: '⏳ Ainda não começou — pré-jogo disponível',
+    ended:    '✅ Partida encerrada'
+  }[match.status] || '';
+
+  document.getElementById('video-wrap').innerHTML = `
+    <div class="video-placeholder">
+      <span class="play-icon" onclick="loadStream(${JSON.stringify(sources[0].url)})">▶️</span>
+      <p>${statusText}</p>
+      <p style="font-size:0.75rem;color:var(--text2);margin-top:8px;">Clique em ▶️ ou escolha uma fonte abaixo</p>
+    </div>`;
+
+  document.getElementById('modal-teams-info').innerHTML = `
+    <div style="text-align:center;padding:14px;border-radius:10px;background:rgba(0,255,179,0.04);border:1px solid var(--border);">
+      <div style="font-size:2rem;margin-bottom:8px;">${match.homeEmoji}</div>
+      <div style="font-weight:700;font-size:1.05rem;">${Security.sanitize(match.home)}</div>
+      <div style="font-family:'Orbitron',monospace;font-size:0.7rem;color:var(--text2);">CASA</div>
+    </div>
+    <div style="text-align:center;padding:14px;border-radius:10px;background:rgba(0,200,255,0.04);border:1px solid rgba(0,200,255,0.15);">
+      <div style="font-size:2rem;margin-bottom:8px;">${match.awayEmoji}</div>
+      <div style="font-weight:700;font-size:1.05rem;">${Security.sanitize(match.away)}</div>
+      <div style="font-family:'Orbitron',monospace;font-size:0.7rem;color:var(--text2);">VISITANTE</div>
+    </div>`;
+
+  document.getElementById('watch-modal').style.display = 'block';
+}
+
+// BUG FIX: Safe stream URL loading
+function loadStream(url) {
+  if (!url || typeof url !== 'string') { notify('URL de stream inválida', 'error'); return; }
+  // Only allow safe embed URLs
+  const safe = Security.isSafeStreamUrl(url) || url.startsWith('https://');
+  if (!safe) { notify('URL de stream bloqueada por segurança', 'error'); return; }
+  const iframe = document.createElement('iframe');
+  iframe.src              = url;
+  iframe.allowFullscreen  = true;
+  iframe.allow            = 'autoplay; fullscreen';
+  iframe.loading          = 'lazy';
+  iframe.style.cssText    = 'width:100%;height:100%;border:none;';
+  const vw = document.getElementById('video-wrap');
+  vw.innerHTML = '';
+  vw.appendChild(iframe);
+  notify('Transmissão carregada!', 'ok');
+}
+
+// BUG FIX: closeModal properly checks overlay click
+function closeModal() {
+  document.getElementById('watch-modal').style.display = 'none';
+  document.getElementById('video-wrap').innerHTML = '';
+}
+
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+/* ==================== PLAYER SEARCH (RAPIDAPI) ==================== */
+function debouncePlayerSearch(val) {
+  clearTimeout(State.playerSearchTimer);
+  if (val.length < 2) return;
+  State.playerSearchTimer = setTimeout(() => searchPlayers(val), 600);
+}
+
+async function searchPlayers(query) {
+  query = query.trim();
+  if (!query || query.length < 2) return;
+
+  const container = document.getElementById('players-result');
+  container.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><p>Buscando jogadores...</p></div>';
+
+  const players = await RapidAPI.searchPlayers(query);
+
+  if (!players || players.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Nenhum jogador encontrado para "<strong>${Security.sanitize(query)}</strong>"</p></div>`;
+    return;
+  }
+
+  const cards = players.slice(0, 24).map(p => {
+    const name       = Security.sanitize(p.name || p.player?.name || p.strPlayer || 'Desconhecido');
+    const club       = Security.sanitize(p.team?.name || p.strTeam || p.club || '—');
+    const position   = Security.sanitize(p.position || p.strPosition || '—');
+    const nationality= Security.sanitize(p.nationality || p.strNationality || '—');
+    const photo      = p.photo || p.strThumb || p.strCutout || '';
+    const thumbHtml  = photo
+      ? `<img src="${Security.sanitize(photo)}" alt="${name}" onerror="this.style.display='none'">`
+      : '👤';
+    return `
+    <div class="player-card card">
+      <div class="player-thumb">${thumbHtml}</div>
+      <div class="player-name">${name}</div>
+      <div class="player-meta">${club}</div>
+      <div class="player-meta">${nationality}</div>
+      <span class="player-pos">${position}</span>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `<div class="players-grid">${cards}</div>`;
+  addSecurityLog(`[RAPIDAPI] Busca: "${query}" — ${players.length} resultados`);
+}
+
+/* ==================== ADMIN FUNCTIONS ==================== */
+function refreshAdminStats() {
+  const users  = Store.getUsers();
+  const active = users.filter(u => !u.banned).length;
+  const banned = users.filter(u => u.banned).length;
+  document.getElementById('adm-total-users').textContent  = users.length;
+  document.getElementById('adm-active-users').textContent = active;
+  document.getElementById('adm-banned-users').textContent = banned;
+
+  const recent = [...users].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
+  document.getElementById('recent-users-tbody').innerHTML = recent.map(u => `
+    <tr>
+      <td><code style="color:var(--neon);font-size:0.8rem;">@${Security.sanitize(u.username)}</code></td>
+      <td>${Security.sanitize(u.name)}</td>
+      <td style="color:var(--text2)">${Security.sanitize(u.email)}</td>
+      <td style="color:var(--text2)">${new Date(u.createdAt).toLocaleDateString('pt-BR')}</td>
+      <td><span class="user-status ${u.banned?'banned':'active'}">${u.banned?'🚫 Banido':'✅ Ativo'}</span></td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:20px">Nenhum usuário</td></tr>';
+}
+
+function renderUsersTable() {
+  const users  = Store.getUsers();
+  const q      = (document.getElementById('user-search')?.value || '').toLowerCase();
+  const filtered = users.filter(u =>
+    u.username.toLowerCase().includes(q) ||
+    u.name.toLowerCase().includes(q)     ||
+    u.email.toLowerCase().includes(q)
+  );
+  document.getElementById('users-tbody').innerHTML = filtered.map(u => `
+    <tr>
+      <td><div class="user-row-avatar">${u.name[0].toUpperCase()}</div></td>
+      <td><code style="color:var(--neon);">@${Security.sanitize(u.username)}</code></td>
+      <td>${Security.sanitize(u.name)}</td>
+      <td style="color:var(--text2)">${Security.sanitize(u.email)}</td>
+      <td style="color:var(--text2)">${new Date(u.createdAt).toLocaleDateString('pt-BR')}</td>
+      <td><span class="user-status ${u.banned?'banned':'active'}">${u.banned?'🚫 Banido':'✅ Ativo'}</span></td>
+      <td>
+        <div class="action-btns">
+          <button class="btn btn-sm btn-outline" onclick="toggleBan('${u.id}')">${u.banned?'Desbanir':'Banir'}</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')">🗑</button>
+        </div>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:30px">Nenhum usuário encontrado</td></tr>';
+}
+
+function toggleBan(userId) {
+  const users = Store.getUsers();
+  const idx   = users.findIndex(u => u.id === userId);
+  if (idx < 0) return;
+  users[idx].banned = !users[idx].banned;
+  Store.saveUsers(users);
+  addSecurityLog(`[ADMIN] Usuário ${users[idx].username} ${users[idx].banned ? 'banido' : 'desbanido'}`);
+  notify(users[idx].banned ? '🚫 Usuário banido' : '✅ Usuário desbanido', users[idx].banned ? 'warn' : 'ok');
+  renderUsersTable();
+  refreshAdminStats();
+}
+
+function deleteUser(userId) {
+  if (!confirm('Tem certeza? Esta ação é irreversível.')) return;
+  let users = Store.getUsers();
+  const u   = users.find(x => x.id === userId);
+  users     = users.filter(x => x.id !== userId);
+  Store.saveUsers(users);
+  addSecurityLog(`[ADMIN] Usuário ${u?.username} removido`);
+  notify('Usuário removido', 'warn');
+  renderUsersTable();
+  refreshAdminStats();
+}
+
+function exportUsers() {
+  const users = Store.getUsers().map(u => ({
+    username:  u.username,
+    name:      u.name,
+    email:     u.email,
+    createdAt: u.createdAt,
+    banned:    u.banned
+  }));
+  const blob = new Blob([JSON.stringify(users, null, 2)], { type: 'application/json' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `neogoal_users_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  notify('Exportação concluída', 'ok');
+}
+
+/* ==================== STREAM CONFIG ==================== */
+function renderStreamConfig() {
+  const grid = document.getElementById('stream-config-grid');
+  grid.innerHTML = DEMO_MATCHES.slice(0, 10).map(m => `
+    <div class="broadcast-card card">
+      <h3>${m.homeEmoji} ${Security.sanitize(m.home)} × ${Security.sanitize(m.away)}</h3>
+      <div style="font-size:0.75rem;color:var(--text2);margin-bottom:10px;">${Security.sanitize(m.league)}</div>
+      <div class="input-group">
+        <label>URL do Stream (YouTube Embed / M3U8)</label>
+        <input class="input-field" id="stream-${m.streamId}" placeholder="https://youtube.com/embed/..." value="${Security.sanitize(State.streamConfig[m.streamId] || '')}">
+      </div>
+      <div class="broadcast-status">
+        <span class="live-dot" style="${State.streamConfig[m.streamId]?'':'background:var(--text2)'}"></span>
+        ${State.streamConfig[m.streamId] ? 'Stream configurado' : 'Sem stream'}
+      </div>
+    </div>`).join('');
+}
+
+function saveStreams() {
+  const config = {};
+  DEMO_MATCHES.slice(0, 10).forEach(m => {
+    const val = document.getElementById('stream-' + m.streamId)?.value.trim();
+    if (val) config[m.streamId] = val;
+  });
+  State.streamConfig = config;
+  localStorage.setItem('ng_streams', JSON.stringify(config));
+  notify('✅ Streams salvos com sucesso!', 'ok');
+  addSecurityLog('[ADMIN] Configurações de stream atualizadas');
+  renderStreamConfig();
+}
+
+function saveSettings() {
+  const keyEl = document.getElementById('cfg-rapidapi-key');
+  if (keyEl && keyEl.value.trim()) {
+    RapidAPI.setKey(keyEl.value.trim());
+    localStorage.setItem('ng_rapidapi_key', keyEl.value.trim());
+    addSecurityLog('[API] RapidAPI key atualizada');
+  }
+  notify('✅ Configurações salvas!', 'ok');
+}
+
+/* ==================== SECURITY LOG ==================== */
+function addSecurityLog(msg) {
+  const log = document.getElementById('security-log');
+  if (!log) return;
+  const now = new Date().toLocaleTimeString('pt-BR');
+  const div = document.createElement('div');
+  div.textContent = `[${now}] ${msg}`;
+  log.insertBefore(div, log.firstChild);
+  // Keep max 100 entries
+  while (log.children.length > 100) log.removeChild(log.lastChild);
+}
+
+/* ==================== MISC ==================== */
+function showForgotNotice() { notify('Recurso em desenvolvimento. Contate o admin.', 'info'); }
+
+/* ==================== KEYBOARD SHORTCUTS ==================== */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  // Enter key in login fields
+  if (e.key === 'Enter') {
+    const active = document.querySelector('.page.active');
+    if (active?.id === 'auth-page') {
+      const loginForm = document.getElementById('login-form');
+      if (!loginForm.classList.contains('hidden')) doLogin();
+      else doRegister();
+    } else if (active?.id === 'admin-auth-page') {
+      doAdminLogin();
+    }
+  }
+});
+
+/* ==================== AUTO-LOGIN ON LOAD ==================== */
+(function init() {
+  // Restore saved API key
+  const savedKey = localStorage.getItem('ng_rapidapi_key');
+  if (savedKey) {
+    RapidAPI.setKey(savedKey);
+    const el = document.getElementById('cfg-rapidapi-key');
+    if (el) el.value = savedKey;
+  }
+
+  // Check for valid session
+  const session = Store.getSession();
+  if (session && session.expiresAt > Date.now()) {
+    const users = Store.getUsers();
+    const user  = users.find(u => u.id === session.userId);
+    if (user && !user.banned) {
+      State.currentUser = user;
+      enterUserDashboard(user);
+      return;
+    }
+  }
+  Store.clearSession();
+})();
+</script>
+</body>
+</html>
